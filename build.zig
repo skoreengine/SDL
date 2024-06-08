@@ -50,6 +50,24 @@ pub fn build(b: *std.Build) !void {
     try addSourceFiles(b, &sources, "src/time");
     try addSourceFiles(b, &sources, "src/timer");
     try addSourceFiles(b, &sources, "src/video");
+    try addSourceFiles(b, &sources, "src/video/yuv2rgb");
+
+    try addSourceFiles(b, &sources, "src/audio/disk");
+    try addSourceFiles(b, &sources, "src/video/offscreen");
+
+    try addSourceFiles(b, &sources, "src/joystick/virtual");
+    try addSourceFiles(b, &sources, "src/joystick/hidapi");
+
+    try addSourceFiles(b, &sources, "src/audio/dummy");
+    try addSourceFiles(b, &sources, "src/video/dummy");
+    try addSourceFiles(b, &sources, "src/joystick/dummy");
+    try addSourceFiles(b, &sources, "src/haptic/dummy");
+    try addSourceFiles(b, &sources, "src/sensor/dummy");
+    try addSourceFiles(b, &sources, "src/loadso/dummy");
+    try addSourceFiles(b, &sources, "src/filesystem/dummy");
+    try addSourceFiles(b, &sources, "src/camera/dummy");
+
+    try addSourceFiles(b, &sources, "src/storage/generic");
 
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
@@ -82,20 +100,39 @@ pub fn build(b: *std.Build) !void {
         lib.linkFramework("AVFoundation");
         lib.linkFramework("Foundation");
     } else if (t.os.tag == .windows) {
-
         try addSourceFiles(b, &sources, "src/core/windows");
         try addSourceFiles(b, &sources, "src/misc/windows");
         try addSourceFiles(b, &sources, "src/audio/directsound");
         try addSourceFiles(b, &sources, "src/audio/wasapi");
-        try addSourceFiles(b, &sources, "src/video/windows/");
+        try addSourceFiles(b, &sources, "src/video/windows");
         try addSourceFiles(b, &sources, "src/locale/windows");
         try addSourceFiles(b, &sources, "src/filesystem/windows");
+        try addSourceFiles(b, &sources, "src/haptic/windows");
         try addSourceFiles(b, &sources, "src/timer/windows");
         try addSourceFiles(b, &sources, "src/time/windows");
         try addSourceFiles(b, &sources, "src/storage/steam");
         try addSourceFiles(b, &sources, "src/storage/generic");
         try addSourceFiles(b, &sources, "src/joystick/windows");
         try addSourceFiles(b, &sources, "src/loadso/windows");
+        try addSourceFiles(b, &sources, "src/sensor/windows/");
+        try addSourceFiles(b, &sources, "src/camera/mediafoundation");
+
+        try sources.append("src/thread/generic/SDL_syscond.c");
+        try sources.append("src/thread/generic/SDL_sysrwlock.c");
+        try sources.append("src/thread/windows/SDL_syscond_cv.c");
+        try sources.append("src/thread/windows/SDL_sysmutex.c");
+        try sources.append("src/thread/windows/SDL_sysrwlock_srw.c");
+        try sources.append("src/thread/windows/SDL_syssem.c");
+        try sources.append("src/thread/windows/SDL_systhread.c");
+        try sources.append("src/thread/windows/SDL_systls.c");
+
+        try addSourceFiles(b, &sources, "src/render/direct3d");
+        try addSourceFiles(b, &sources, "src/render/direct3d11");
+        try addSourceFiles(b, &sources, "src/render/direct3d12");
+        try addSourceFiles(b, &sources, "src/render/vulkan");
+        try addSourceFiles(b, &sources, "src/render/opengl");
+        try addSourceFiles(b, &sources, "src/render/opengles2");
+        try addSourceFiles(b, &sources, "src/render/software");
 
         lib.linkSystemLibrary("setupapi");
         lib.linkSystemLibrary("winmm");
@@ -106,8 +143,27 @@ pub fn build(b: *std.Build) !void {
         lib.linkSystemLibrary("ole32");
     }
 
-
     lib.addCSourceFiles(.{ .files = sources.items });
-    lib.installHeadersDirectory(b.path("include"), "SDL3", .{});
     b.installArtifact(lib);
+
+    const test_app = b.addExecutable(.{
+        .name = "test_app",
+        .root_source_file = b.path("test/main.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(test_app);
+
+    test_app.linkLibrary(lib);
+    test_app.addIncludePath(b.path("include"));
+
+    const run_cmd = b.addRunArtifact(test_app);
+
+    run_cmd.step.dependOn(b.getInstallStep());
+    if (b.args) |args| {
+        run_cmd.addArgs(args);
+    }
+
+    const run_step = b.step("run", "Run the app");
+    run_step.dependOn(&run_cmd.step);
 }
