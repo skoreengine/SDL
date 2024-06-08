@@ -39,7 +39,7 @@ fn isFolderAllowed(t: std.Target, name: []const u8) bool {
 }
 
 fn addSourceFiles(t: std.Target, b: *std.Build, sources: *FileArray, sub_path: []const u8) !void {
-    var dir = try std.fs.cwd().openDir(sub_path, .{ .iterate = true });
+    var dir = try std.fs.cwd().openDir(b.path(sub_path).getPath(b), .{ .iterate = true });
     var iter = dir.iterate();
     while (try iter.next()) |file| {
         if (file.kind == .directory) {
