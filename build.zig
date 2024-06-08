@@ -2,19 +2,59 @@ const std = @import("std");
 
 const FileArray = std.ArrayList([]const u8);
 
-fn addSourceFiles(b: *std.Build, sources: *FileArray, sub_path: []const u8) !void {
+const generic_src_directorioes = [_][]const u8{
+    "dummy",
+};
+
+const windows_src_directories = [_][]const u8{
+    "windows",
+    "wasapi",
+    "mediafoundation",
+    "directsound",
+    "direct3d",
+    "direct3d11",
+    "direct3d12",
+    "vulkan",
+    "opengl",
+    "opengles2",
+    "software",
+};
+
+fn isFolderAllowed(t: std.Target, name: []const u8) bool {
+    for (generic_src_directorioes) |value| {
+        if (std.mem.eql(u8, name, value)) {
+            return true;
+        }
+    }
+
+    if (t.os.tag == .windows) {
+        for (windows_src_directories) |value| {
+            if (std.mem.eql(u8, name, value)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+fn addSourceFiles(t: std.Target, b: *std.Build, sources: *FileArray, sub_path: []const u8) !void {
     var dir = try std.fs.cwd().openDir(sub_path, .{ .iterate = true });
     var iter = dir.iterate();
     while (try iter.next()) |file| {
-        if (file.kind != .file) {
-            continue;
-        }
-
-        const ext = std.fs.path.extension(file.name);
-        if (std.mem.eql(u8, ext, ".c")) {
-            const paths = [_][]const u8{ sub_path, file.name };
-            const full_path = b.pathJoin(&paths);
-            try sources.append(full_path);
+        if (file.kind == .directory) {
+            if (isFolderAllowed(t, file.name)) {
+                const paths = [_][]const u8{ sub_path, file.name };
+                const full_path = b.pathJoin(&paths);
+                try addSourceFiles(t, b, sources, full_path);
+            }
+        } else if (file.kind == .file) {
+            const ext = std.fs.path.extension(file.name);
+            if (std.mem.eql(u8, ext, ".c")) {
+                const paths = [_][]const u8{ sub_path, file.name };
+                const full_path = b.pathJoin(&paths);
+                try sources.append(full_path);
+            }
         }
     }
 }
@@ -23,56 +63,48 @@ pub fn build(b: *std.Build) !void {
     var sources = FileArray.init(b.allocator);
     defer sources.deinit();
 
-    try addSourceFiles(b, &sources, "src");
-    try addSourceFiles(b, &sources, "src/atomic");
-    try addSourceFiles(b, &sources, "src/audio");
-    try addSourceFiles(b, &sources, "src/camera");
-    try addSourceFiles(b, &sources, "src/core");
-    try addSourceFiles(b, &sources, "src/cpuinfo");
-    try addSourceFiles(b, &sources, "src/dynapi");
-    try addSourceFiles(b, &sources, "src/events");
-    try addSourceFiles(b, &sources, "src/file");
-    try addSourceFiles(b, &sources, "src/filesystem");
-    try addSourceFiles(b, &sources, "src/joystick");
-    try addSourceFiles(b, &sources, "src/haptic");
-    try addSourceFiles(b, &sources, "src/hidapi");
-    try addSourceFiles(b, &sources, "src/libm");
-    try addSourceFiles(b, &sources, "src/locale");
-    try addSourceFiles(b, &sources, "src/main");
-    try addSourceFiles(b, &sources, "src/misc");
-    try addSourceFiles(b, &sources, "src/power");
-    try addSourceFiles(b, &sources, "src/render");
-    try addSourceFiles(b, &sources, "src/render");
-    try addSourceFiles(b, &sources, "src/sensor");
-    try addSourceFiles(b, &sources, "src/stdlib");
-    try addSourceFiles(b, &sources, "src/storage");
-    try addSourceFiles(b, &sources, "src/thread");
-    try addSourceFiles(b, &sources, "src/time");
-    try addSourceFiles(b, &sources, "src/timer");
-    try addSourceFiles(b, &sources, "src/video");
-    try addSourceFiles(b, &sources, "src/video/yuv2rgb");
-
-    try addSourceFiles(b, &sources, "src/audio/disk");
-    try addSourceFiles(b, &sources, "src/video/offscreen");
-
-    try addSourceFiles(b, &sources, "src/joystick/virtual");
-    try addSourceFiles(b, &sources, "src/joystick/hidapi");
-
-    try addSourceFiles(b, &sources, "src/audio/dummy");
-    try addSourceFiles(b, &sources, "src/video/dummy");
-    try addSourceFiles(b, &sources, "src/joystick/dummy");
-    try addSourceFiles(b, &sources, "src/haptic/dummy");
-    try addSourceFiles(b, &sources, "src/sensor/dummy");
-    try addSourceFiles(b, &sources, "src/loadso/dummy");
-    try addSourceFiles(b, &sources, "src/filesystem/dummy");
-    try addSourceFiles(b, &sources, "src/camera/dummy");
-
-    try addSourceFiles(b, &sources, "src/storage/generic");
-
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
-
     const t = target.result;
+
+    try addSourceFiles(t, b, &sources, "src");
+    try addSourceFiles(t, b, &sources, "src/atomic");
+    try addSourceFiles(t, b, &sources, "src/audio");
+    try addSourceFiles(t, b, &sources, "src/camera");
+    try addSourceFiles(t, b, &sources, "src/core");
+    try addSourceFiles(t, b, &sources, "src/cpuinfo");
+    try addSourceFiles(t, b, &sources, "src/dynapi");
+    try addSourceFiles(t, b, &sources, "src/events");
+    try addSourceFiles(t, b, &sources, "src/file");
+    try addSourceFiles(t, b, &sources, "src/filesystem");
+    try addSourceFiles(t, b, &sources, "src/joystick");
+    try addSourceFiles(t, b, &sources, "src/haptic");
+    try addSourceFiles(t, b, &sources, "src/hidapi");
+    try addSourceFiles(t, b, &sources, "src/libm");
+    try addSourceFiles(t, b, &sources, "src/locale");
+    try addSourceFiles(t, b, &sources, "src/main");
+    try addSourceFiles(t, b, &sources, "src/misc");
+    try addSourceFiles(t, b, &sources, "src/power");
+    try addSourceFiles(t, b, &sources, "src/render");
+    try addSourceFiles(t, b, &sources, "src/render");
+    try addSourceFiles(t, b, &sources, "src/sensor");
+    try addSourceFiles(t, b, &sources, "src/stdlib");
+    try addSourceFiles(t, b, &sources, "src/storage");
+    try addSourceFiles(t, b, &sources, "src/storage/steam");
+    try addSourceFiles(t, b, &sources, "src/thread");
+    try addSourceFiles(t, b, &sources, "src/time");
+    try addSourceFiles(t, b, &sources, "src/timer");
+    try addSourceFiles(t, b, &sources, "src/loadso");
+    try addSourceFiles(t, b, &sources, "src/video");
+    try addSourceFiles(t, b, &sources, "src/video/yuv2rgb");
+
+    try addSourceFiles(t, b, &sources, "src/audio/disk");
+    try addSourceFiles(t, b, &sources, "src/video/offscreen");
+
+    try addSourceFiles(t, b, &sources, "src/joystick/virtual");
+    try addSourceFiles(t, b, &sources, "src/joystick/hidapi");
+
+    try addSourceFiles(t, b, &sources, "src/storage/generic");
 
     const lib = b.addStaticLibrary(.{
         .name = "SDL3",
@@ -100,39 +132,8 @@ pub fn build(b: *std.Build) !void {
         lib.linkFramework("AVFoundation");
         lib.linkFramework("Foundation");
     } else if (t.os.tag == .windows) {
-        try addSourceFiles(b, &sources, "src/core/windows");
-        try addSourceFiles(b, &sources, "src/misc/windows");
-        try addSourceFiles(b, &sources, "src/audio/directsound");
-        try addSourceFiles(b, &sources, "src/audio/wasapi");
-        try addSourceFiles(b, &sources, "src/video/windows");
-        try addSourceFiles(b, &sources, "src/locale/windows");
-        try addSourceFiles(b, &sources, "src/filesystem/windows");
-        try addSourceFiles(b, &sources, "src/haptic/windows");
-        try addSourceFiles(b, &sources, "src/timer/windows");
-        try addSourceFiles(b, &sources, "src/time/windows");
-        try addSourceFiles(b, &sources, "src/storage/steam");
-        try addSourceFiles(b, &sources, "src/storage/generic");
-        try addSourceFiles(b, &sources, "src/joystick/windows");
-        try addSourceFiles(b, &sources, "src/loadso/windows");
-        try addSourceFiles(b, &sources, "src/sensor/windows/");
-        try addSourceFiles(b, &sources, "src/camera/mediafoundation");
-
         try sources.append("src/thread/generic/SDL_syscond.c");
         try sources.append("src/thread/generic/SDL_sysrwlock.c");
-        try sources.append("src/thread/windows/SDL_syscond_cv.c");
-        try sources.append("src/thread/windows/SDL_sysmutex.c");
-        try sources.append("src/thread/windows/SDL_sysrwlock_srw.c");
-        try sources.append("src/thread/windows/SDL_syssem.c");
-        try sources.append("src/thread/windows/SDL_systhread.c");
-        try sources.append("src/thread/windows/SDL_systls.c");
-
-        try addSourceFiles(b, &sources, "src/render/direct3d");
-        try addSourceFiles(b, &sources, "src/render/direct3d11");
-        try addSourceFiles(b, &sources, "src/render/direct3d12");
-        try addSourceFiles(b, &sources, "src/render/vulkan");
-        try addSourceFiles(b, &sources, "src/render/opengl");
-        try addSourceFiles(b, &sources, "src/render/opengles2");
-        try addSourceFiles(b, &sources, "src/render/software");
 
         lib.linkSystemLibrary("setupapi");
         lib.linkSystemLibrary("winmm");

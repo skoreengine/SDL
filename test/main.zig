@@ -2,6 +2,7 @@ const std = @import("std");
 
 const sdl = @cImport({
     @cInclude("SDL3/SDL.h");
+    @cInclude("SDL3/SDL_vulkan.h");
 });
 
 pub fn main() !void {
@@ -10,6 +11,10 @@ pub fn main() !void {
 
     if (sdl.SDL_Init(sdl.SDL_INIT_VIDEO) != 0) {
         return error.SDLInit;
+    }
+
+    if (sdl.SDL_Vulkan_LoadLibrary(null) != 0) {
+        return error.SDLVulkanError;
     }
 
     std.debug.print("SDL INITIALIZED ", .{});
