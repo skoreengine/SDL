@@ -145,6 +145,8 @@ pub fn build(b: *std.Build) !void {
     }
 
     lib.addCSourceFiles(.{ .files = sources.items });
+    lib.installHeadersDirectory(b.path("include/SDL3"), "SDL3", .{});
+
     b.installArtifact(lib);
 
     const test_app = b.addExecutable(.{
