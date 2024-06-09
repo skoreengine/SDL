@@ -10,16 +10,18 @@ pub fn main() !void {
     var done = false;
 
     if (sdl.SDL_Init(sdl.SDL_INIT_VIDEO) != 0) {
+        std.log.err("error on init SDL {s}", .{sdl.SDL_GetError()});
         return error.SDLInit;
     }
 
     if (sdl.SDL_Vulkan_LoadLibrary(null) != 0) {
+        std.log.err("error on SDL_Vulkan_LoadLibrary {s}", .{sdl.SDL_GetError()});
         return error.SDLVulkanError;
     }
 
     std.debug.print("SDL INITIALIZED ", .{});
 
-    const window = sdl.SDL_CreateWindow("window", 800, 600, 0);
+    const window = sdl.SDL_CreateWindow("window", 1920, 1080, sdl.SDL_WINDOW_VULKAN | sdl.SDL_WINDOW_RESIZABLE);
 
     while (!done) {
 

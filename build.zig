@@ -20,6 +20,18 @@ const windows_src_directories = [_][]const u8{
     "software",
 };
 
+const linux_src_directorioes = [_][]const u8{
+    "unix",
+    "steam",
+    "software",
+    "pthread",
+    "x11",
+    "vulkan",
+    "opengl",
+    "opengles2",
+    "dlopen",
+};
+
 fn isFolderAllowed(t: std.Target, name: []const u8) bool {
     for (generic_src_directorioes) |value| {
         if (std.mem.eql(u8, name, value)) {
@@ -29,6 +41,12 @@ fn isFolderAllowed(t: std.Target, name: []const u8) bool {
 
     if (t.os.tag == .windows) {
         for (windows_src_directories) |value| {
+            if (std.mem.eql(u8, name, value)) {
+                return true;
+            }
+        }
+    } else if (t.os.tag == .linux) {
+        for (linux_src_directorioes) |value| {
             if (std.mem.eql(u8, name, value)) {
                 return true;
             }
@@ -142,6 +160,39 @@ pub fn build(b: *std.Build) !void {
         lib.linkSystemLibrary("version");
         lib.linkSystemLibrary("oleaut32");
         lib.linkSystemLibrary("ole32");
+    } else if (t.os.tag == .linux) {
+
+        lib.defineCMacro("SDL_TIMER_UNIX" , "1");
+
+        lib.linkSystemLibrary("Xi");
+        lib.linkSystemLibrary("Xmu");
+        lib.linkSystemLibrary("Xext");
+
+        lib.defineCMacro("HAVE_X11", "TRUE");
+        lib.defineCMacro("HAVE_SDL_VIDEO", "TRUE");
+        lib.defineCMacro("SDL_VIDEO_DRIVER_X11" , "1");
+        lib.defineCMacro("HAVE_XCURSOR_H", "1");
+        lib.defineCMacro("HAVE_XINPUT2_H", "1");
+        lib.defineCMacro("HAVE_XRANDR_H", "1");
+        lib.defineCMacro("HAVE_XFIXES_H_", "1");
+        lib.defineCMacro("HAVE_XRENDER_H", "1");
+        lib.defineCMacro("HAVE_XSS_H", "1");
+        lib.defineCMacro("HAVE_XSHAPE_H", "1");
+        lib.defineCMacro("HAVE_XDBE_H", "1");
+        lib.defineCMacro("HAVE_XEXT_H", "1");
+        lib.defineCMacro("SDL_VIDEO_DRIVER_X11_SUPPORTS_GENERIC_EVENTS", "1");
+        lib.defineCMacro("SDL_VIDEO_DRIVER_X11_XSHAPE", "1");
+        lib.defineCMacro("HAVE_X11_XSHAPE", "TRUE");
+
+        lib.defineCMacro("SDL_VIDEO_VULKAN", "1");
+        lib.defineCMacro("HAVE_VULKAN", "TRUE");
+
+        lib.defineCMacro("SDL_LOADSO_DLOPEN", "1");
+        lib.defineCMacro("HAVE_SDL_LOADSO", "TRUE");
+
+        try sources.append("src/core/linux/SDL_evdev_capabilities.c");
+        try sources.append("src/core/linux/SDL_threadprio.c");
+        try sources.append("src/core/linux/SDL_sandbox.c");
     }
 
     lib.addCSourceFiles(.{ .files = sources.items });
