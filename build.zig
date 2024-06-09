@@ -168,6 +168,7 @@ pub fn build(b: *std.Build) !void {
         lib.linkSystemLibrary("Xmu");
         lib.linkSystemLibrary("Xext");
 
+        lib.defineCMacro("HAVE_LIBC", "TRUE");
         lib.defineCMacro("HAVE_X11", "TRUE");
         lib.defineCMacro("HAVE_SDL_VIDEO", "TRUE");
         lib.defineCMacro("SDL_VIDEO_DRIVER_X11" , "1");
